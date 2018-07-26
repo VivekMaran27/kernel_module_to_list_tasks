@@ -3,12 +3,12 @@
 #include <linux/sched.h>
 #include <linux/init.h>
 #include <linux/delay.h>
+#include <linux/time.h>
 
 extern struct task_struct init_task;
+static int process_count = 0;
 
-//#define update() printk("\033[H\033[J")
-//#define gotoxy(x, y) printk("\033[%d;%dH", x, y)
-
+/* Utility function for pretty printing */
 void printk_repeatc (char input , int count )
 {
     int i = 0;
@@ -18,13 +18,20 @@ void printk_repeatc (char input , int count )
     }
 }
 
+/* Get time in Microseconds */
+unsigned long long get_time_us(void)
+{
+   static struct timeval _t;  
+   do_gettimeofday(&_t);  
+   return _t.tv_usec + (1000000 * _t.tv_sec);
+}
+
 /* Main function for the pslist module.*/
 void print_process_tree(struct task_struct *pTask)
 {
     struct task_struct *pChild = NULL;
     struct list_head *pListHeadEle = NULL;
     
-    //printk(KERN_INFO "print_process_tree++\n");
     if(NULL == pTask)
     {
         printk(KERN_ERR "Task is NULL\n"); 
@@ -34,6 +41,7 @@ void print_process_tree(struct task_struct *pTask)
                
         printk(KERN_ERR "%10.10s\t%10.3d\t%10.3li\t%10.3d \n",  
                 pTask->comm, pTask->pid, pTask->state, pTask->real_parent->pid);
+        ++process_count;
         printk_repeatc('-',50);
         
         list_for_each(pListHeadEle, &pTask->children) 
@@ -42,18 +50,31 @@ void print_process_tree(struct task_struct *pTask)
             print_process_tree(pChild);
         }
     }
-    //printk(KERN_INFO "print_process_tree--\n");
 }
 
 /* This function is called when the module is loaded. */
 int pslist_init(void)
 {
-    printk(KERN_INFO "Loading Module\n");
+    unsigned long long start_time = 0;
+    unsigned long long  end_time = 0;
+
+    printk(KERN_DEBUG "Loading Module\n");
+    
+    /* Print table title */
     printk_repeatc('=',50);
     printk(KERN_ERR "%10s\t%10s\t%10s\t%10s\t\n","NAME","PID","STATE","PARENT");
     printk_repeatc('=',50);
-//  update();
+    
+    start_time = get_time_us();
     print_process_tree(&init_task);
+    end_time = get_time_us();
+
+    printk("\n\n");
+    printk_repeatc('=',20);
+    printk(KERN_ERR "PSLIST EXEC STATS\n");
+    printk_repeatc('=',20);
+    printk(KERN_ERR "Number of processes: %d\n", process_count);
+    printk(KERN_ERR "Execution time: %llu us\n", (end_time - start_time));
     return 0;
 }
 
