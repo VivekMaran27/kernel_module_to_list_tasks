@@ -4,6 +4,8 @@
 #include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/time.h>
+#include <linux/rcupdate.h>
+#include <linux/rculist.h>
 
 extern struct task_struct init_task;
 static int process_count = 0;
@@ -30,7 +32,7 @@ unsigned long long get_time_us(void)
 void print_process_tree(struct task_struct *pTask)
 {
     struct task_struct *pChild = NULL;
-    struct list_head *pListHeadEle = NULL;
+    //struct list_head *pListHeadEle = NULL;
     
     if(NULL == pTask)
     {
@@ -38,15 +40,13 @@ void print_process_tree(struct task_struct *pTask)
     }
     else
     {
-               
+
         printk(KERN_ERR "%10.10s\t%10.3d\t%10.3li\t%10.3d \n",  
                 pTask->comm, pTask->pid, pTask->state, pTask->real_parent->pid);
         ++process_count;
         printk_repeatc('-',50);
-        
-        list_for_each(pListHeadEle, &pTask->children) 
+        list_for_each_entry_rcu(pChild, &pTask->children, sibling) 
         {
-            pChild = list_entry(pListHeadEle, struct task_struct, sibling);
             print_process_tree(pChild);
         }
     }
@@ -66,7 +66,9 @@ int pslist_init(void)
     printk_repeatc('=',50);
     
     start_time = get_time_us();
+    rcu_read_lock();
     print_process_tree(&init_task);
+    rcu_read_unlock();
     end_time = get_time_us();
 
     printk("\n\n");
