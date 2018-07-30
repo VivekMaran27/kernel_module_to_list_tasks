@@ -21,11 +21,11 @@ void printk_repeatc (char input , int count )
 }
 
 /* Get time in Microseconds */
-unsigned long long get_time_us(void)
+unsigned long long get_time_ms(void)
 {
-   static struct timeval _t;  
-   do_gettimeofday(&_t);  
-   return _t.tv_usec + (1000000 * _t.tv_sec);
+   static struct timeval tv;  
+   do_gettimeofday(&tv); 
+   return tv.tv_sec*1000LL + tv.tv_usec/1000; 
 }
 
 /* Main function for the pslist module.*/
@@ -65,18 +65,18 @@ int pslist_init(void)
     printk(KERN_ERR "%10s\t%10s\t%10s\t%10s\t\n","NAME","PID","STATE","PARENT");
     printk_repeatc('=',50);
     
-    start_time = get_time_us();
+    start_time = get_time_ms();
     rcu_read_lock();
     print_process_tree(&init_task);
     rcu_read_unlock();
-    end_time = get_time_us();
+    end_time = get_time_ms();
 
     printk("\n\n");
     printk_repeatc('=',20);
     printk(KERN_ERR "PSLIST EXEC STATS\n");
     printk_repeatc('=',20);
     printk(KERN_ERR "Number of processes: %d\n", process_count);
-    printk(KERN_ERR "Execution time: %llu us\n", (end_time - start_time));
+    printk(KERN_ERR "Execution time: %llu ms\n", (end_time - start_time));
     return 0;
 }
 
